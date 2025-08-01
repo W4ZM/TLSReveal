@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 4.0)
-project(dll-test CXX)
+project(target_dll CXX)
 
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
@@ -19,5 +19,5 @@ set(ALL_SOURCES
     ${HDRS}
 )
 
-add_library(example SHARED ${ALL_SOURCES})
+add_library(target SHARED ${ALL_SOURCES})
 
