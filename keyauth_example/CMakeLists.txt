@@ -22,4 +22,5 @@ set(ALL_SOURCES
 )
 
 add_executable(crackme ${ALL_SOURCES})
+set_target_properties(crackme PROPERTIES VS_GLOBAL_CharacterSet "MultiByte")
 target_link_libraries(crackme ${CMAKE_SOURCE_DIR}/src/library_x64.lib)

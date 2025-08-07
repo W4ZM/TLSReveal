@@ -30,6 +30,8 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/target_dll)
 
 add_executable(mapper ${ALL_SOURCES})
 
+set_target_properties(mapper PROPERTIES VS_GLOBAL_CharacterSet "MultiByte")
+
 add_dependencies(mapper target)
 
 # to create bytes array from target.dll
