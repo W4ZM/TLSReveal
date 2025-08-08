@@ -1,0 +1,10 @@
+^C:\USERS\PC\DESKTOP\GITHUB\X64-DLL-MANUAL-MAPPER\KEYAUTH_EXAMPLE\CMAKELISTS.TXT
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/PC/Desktop/github/x64-dll-manual-mapper/keyauth_example -BC:/Users/PC/Desktop/github/x64-dll-manual-mapper/keyauth_example/build --check-stamp-file C:/Users/PC/Desktop/github/x64-dll-manual-mapper/keyauth_example/build/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

@@ -1,0 +1,20 @@
+^C:\USERS\PC\DESKTOP\GITHUB\X64-DLL-MANUAL-MAPPER\TARGET_DLL\BUILD\CMAKEFILES\53B0A3B5B2B1E16C92B5E618321FA2C2\MYTAR2.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -D target_dll="C:/Users/PC/Desktop/github/x64-dll-manual-mapper/target_dll/build/Release/target.dll" -D source_dir="C:/Users/PC/Desktop/github/x64-dll-manual-mapper/target_dll/../src" -P C:/Users/PC/Desktop/github/x64-dll-manual-mapper/target_dll/../cmake/FileEmbed.cmake
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^C:\USERS\PC\DESKTOP\GITHUB\X64-DLL-MANUAL-MAPPER\TARGET_DLL\CMAKELISTS.TXT
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/PC/Desktop/github/x64-dll-manual-mapper/target_dll -BC:/Users/PC/Desktop/github/x64-dll-manual-mapper/target_dll/build --check-stamp-file C:/Users/PC/Desktop/github/x64-dll-manual-mapper/target_dll/build/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

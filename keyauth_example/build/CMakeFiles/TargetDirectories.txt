@@ -1,0 +1,3 @@
+C:/Users/PC/Desktop/github/x64-dll-manual-mapper/keyauth_example/build/CMakeFiles/crackme.dir
+C:/Users/PC/Desktop/github/x64-dll-manual-mapper/keyauth_example/build/CMakeFiles/ALL_BUILD.dir
+C:/Users/PC/Desktop/github/x64-dll-manual-mapper/keyauth_example/build/CMakeFiles/ZERO_CHECK.dir

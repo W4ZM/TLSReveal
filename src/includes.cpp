@@ -1,8 +1,9 @@
 #include <Windows.h>
 #include <stdio.h>
 #include <string>
-#include "dll.hpp"
 #include "includes.hpp"
+#include "dll.hpp"
+
 
 #define BUFSIZE MAX_PATH
 
@@ -11,7 +12,87 @@
 DWORD WINAPI shellcode(LPVOID lp)
 {
     auto scd = reinterpret_cast<sc_data*>(lp);
+    auto image_base = reinterpret_cast<uint8_t*>(scd->dll_base);
+    auto nt_header = reinterpret_cast<PIMAGE_NT_HEADERS>(
+        image_base + reinterpret_cast<PIMAGE_DOS_HEADER>(image_base)->e_lfanew);
+    auto& imp_dir_entry = nt_header->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT];
+    auto import_table = reinterpret_cast<PIMAGE_IMPORT_DESCRIPTOR>(image_base + imp_dir_entry.VirtualAddress);
     
+    //resolve imports
+    while (import_table->OriginalFirstThunk != NULL)
+    {
+        auto dll_name = reinterpret_cast<char*>(image_base + import_table->Name);
+
+        auto dll_import = scd->__LoadLibrary(dll_name);
+        if (dll_import == NULL) return 1;
+        
+        auto lookup_table = reinterpret_cast<PIMAGE_THUNK_DATA64>(image_base + import_table->OriginalFirstThunk);
+        auto address_table = reinterpret_cast<PIMAGE_THUNK_DATA64>(image_base + import_table->FirstThunk);
+
+        while (lookup_table->u1.AddressOfData != NULL)
+        {
+            FARPROC func;
+            auto lookup_address = lookup_table->u1.AddressOfData;
+
+            if ((lookup_address & IMAGE_ORDINAL_FLAG64) != NULL)
+            {
+                func = scd->__GetProcAddress(dll_import, reinterpret_cast<LPCSTR>(lookup_address & 0xFFFFFFFF));
+                if(func == NULL) return 2;
+            }
+            else
+            {
+                auto import_name = reinterpret_cast<PIMAGE_IMPORT_BY_NAME>(image_base + lookup_address);
+                func = scd->__GetProcAddress(dll_import, import_name->Name);
+                if(func == NULL) return 3;
+            }
+            
+            address_table->u1.Function = reinterpret_cast<uint64_t>(func);
+            ++lookup_table;
+            ++lookup_address;
+        }
+        ++import_table;
+    }
+
+    // resolve relocations
+    if ((nt_header->OptionalHeader.DllCharacteristics & IMAGE_DLLCHARACTERISTICS_DYNAMIC_BASE) == NULL) return 4;
+    
+    auto& reloc_dir_entry = nt_header->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC];
+    if(reloc_dir_entry.VirtualAddress == NULL) return 5;
+
+    auto relocation_table = reinterpret_cast<PIMAGE_BASE_RELOCATION>(image_base + reloc_dir_entry.VirtualAddress);
+    uintptr_t delta = reinterpret_cast<uintptr_t>(image_base) - nt_header->OptionalHeader.ImageBase;
+    
+    while (relocation_table->VirtualAddress != NULL)
+    {
+        size_t relocations = (relocation_table->SizeOfBlock - sizeof(IMAGE_BASE_RELOCATION)) / sizeof(uint16_t);
+        auto relocation_data = reinterpret_cast<uint16_t*>(&relocation_table[1]);
+
+        for (size_t i = 0; i < relocations; i++)
+        {
+            auto relocation = relocation_data[i];
+            uint16_t type = relocation >> 12;
+            uint16_t offset = relocation & 0xFF;
+            
+            auto ptr = reinterpret_cast<uintptr_t*>(image_base + relocation_table->VirtualAddress + offset);
+            if(type == IMAGE_REL_BASED_DIR64) *ptr += delta;
+        }
+        
+        relocation_table = reinterpret_cast<PIMAGE_BASE_RELOCATION>(
+            reinterpret_cast<uint8_t*>(relocation_table) + relocation_table->SizeOfBlock
+        );
+    }
+    
+    // register exception tables
+    auto& excep_dir_entry  = nt_header->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXCEPTION];
+    if (excep_dir_entry.Size && excep_dir_entry.VirtualAddress) 
+    {
+        auto pFuncTable = reinterpret_cast<PRUNTIME_FUNCTION>(image_base + excep_dir_entry.VirtualAddress);
+        ULONG entryCount = excep_dir_entry.Size / sizeof(RUNTIME_FUNCTION);
+
+        if (RtlAddFunctionTable(pFuncTable, entryCount, reinterpret_cast<DWORD64>(image_base)) == FALSE) return 6;
+    }
+
+
     return 0;
 }
 

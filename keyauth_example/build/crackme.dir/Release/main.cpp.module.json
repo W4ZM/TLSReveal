@@ -1,0 +1,13 @@
+{
+    "version": 1,
+    "revision": 0,
+    "rules": [
+        {
+            "primary-output": "crackme.dir\\Release\\main.obj",
+            "outputs": [
+                "crackme.dir\\Release\\"
+            ],
+            "requires": []
+        }
+    ]
+}

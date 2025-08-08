@@ -1,0 +1,13 @@
+{
+    "version": 1,
+    "revision": 0,
+    "rules": [
+        {
+            "primary-output": "target.dir\\Release\\dll.obj",
+            "outputs": [
+                "target.dir\\Release\\"
+            ],
+            "requires": []
+        }
+    ]
+}
