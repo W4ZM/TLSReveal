@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 4.0)
 project(target_dll CXX)
 
+# crt static linking
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 set(CMAKE_CXX_STANDARD 20)
@@ -19,5 +20,19 @@ set(ALL_SOURCES
     ${HDRS}
 )
 
+# hex bytes generator script
+file(GLOB_RECURSE SCRIPT
+    "${CMAKE_SOURCE_DIR}/../cmake/*.cmake"
+)
+
 add_library(target SHARED ${ALL_SOURCES})
+set_target_properties(target PROPERTIES VS_GLOBAL_CharacterSet "MultiByte")
+
+# run script after building dll
+add_custom_command(
+  TARGET target
+  POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -D target_dll="$<TARGET_FILE:target>" -D source_dir="${CMAKE_SOURCE_DIR}/../src" -P ${SCRIPT} 
+  COMMENT "-- [ GENERATING DLL HEX BYTES ]"
+)
 
