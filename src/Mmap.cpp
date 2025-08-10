@@ -1,12 +1,12 @@
 #include <Windows.h>
 #include <stdio.h>
-#include <string>
-#include "includes.hpp"
+//#include <string>
+#include <thread>
+#include "Mmap.hpp"
 #include "dll.hpp"
 
 
-#define BUFSIZE MAX_PATH
-
+HANDLE h_thread; // remote thread handle
 
 
 DWORD WINAPI shellcode(LPVOID lp)
@@ -18,46 +18,11 @@ DWORD WINAPI shellcode(LPVOID lp)
     auto& imp_dir_entry = nt_header->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT];
     auto import_table = reinterpret_cast<PIMAGE_IMPORT_DESCRIPTOR>(image_base + imp_dir_entry.VirtualAddress);
     
-    //resolve imports
-    while (import_table->OriginalFirstThunk != NULL)
-    {
-        auto dll_name = reinterpret_cast<char*>(image_base + import_table->Name);
-
-        auto dll_import = scd->__LoadLibrary(dll_name);
-        if (dll_import == NULL) return 1;
-        
-        auto lookup_table = reinterpret_cast<PIMAGE_THUNK_DATA64>(image_base + import_table->OriginalFirstThunk);
-        auto address_table = reinterpret_cast<PIMAGE_THUNK_DATA64>(image_base + import_table->FirstThunk);
-
-        while (lookup_table->u1.AddressOfData != NULL)
-        {
-            FARPROC func;
-            auto lookup_address = lookup_table->u1.AddressOfData;
-
-            if ((lookup_address & IMAGE_ORDINAL_FLAG64) != NULL)
-            {
-                func = scd->__GetProcAddress(dll_import, reinterpret_cast<LPCSTR>(lookup_address & 0xFFFFFFFF));
-                if(func == NULL) return 2;
-            }
-            else
-            {
-                auto import_name = reinterpret_cast<PIMAGE_IMPORT_BY_NAME>(image_base + lookup_address);
-                func = scd->__GetProcAddress(dll_import, import_name->Name);
-                if(func == NULL) return 3;
-            }
-            
-            address_table->u1.Function = reinterpret_cast<uint64_t>(func);
-            ++lookup_table;
-            ++lookup_address;
-        }
-        ++import_table;
-    }
-
     // resolve relocations
-    if ((nt_header->OptionalHeader.DllCharacteristics & IMAGE_DLLCHARACTERISTICS_DYNAMIC_BASE) == NULL) return 4;
+    if ((nt_header->OptionalHeader.DllCharacteristics & IMAGE_DLLCHARACTERISTICS_DYNAMIC_BASE) == NULL) return 0x4337;
     
     auto& reloc_dir_entry = nt_header->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC];
-    if(reloc_dir_entry.VirtualAddress == NULL) return 5;
+    if(reloc_dir_entry.VirtualAddress == NULL) return 0x5337;
 
     auto relocation_table = reinterpret_cast<PIMAGE_BASE_RELOCATION>(image_base + reloc_dir_entry.VirtualAddress);
     uintptr_t delta = reinterpret_cast<uintptr_t>(image_base) - nt_header->OptionalHeader.ImageBase;
@@ -71,7 +36,7 @@ DWORD WINAPI shellcode(LPVOID lp)
         {
             auto relocation = relocation_data[i];
             uint16_t type = relocation >> 12;
-            uint16_t offset = relocation & 0xFF;
+            uint16_t offset = relocation & 0xFFF;
             
             auto ptr = reinterpret_cast<uintptr_t*>(image_base + relocation_table->VirtualAddress + offset);
             if(type == IMAGE_REL_BASED_DIR64) *ptr += delta;
@@ -81,19 +46,72 @@ DWORD WINAPI shellcode(LPVOID lp)
             reinterpret_cast<uint8_t*>(relocation_table) + relocation_table->SizeOfBlock
         );
     }
+
+    //resolve imports
+    while (import_table->OriginalFirstThunk != NULL)
+    {
+        //return 0x106;
+        auto dll_name = reinterpret_cast<char*>(image_base + import_table->Name);
+        auto dll_import = scd->__LoadLibrary(dll_name);
+        if (dll_import == NULL) return 0x1337;
+        
+        auto lookup_table = reinterpret_cast<PIMAGE_THUNK_DATA64>(image_base + import_table->OriginalFirstThunk);
+        //return 0x106;
+        auto address_table = reinterpret_cast<PIMAGE_THUNK_DATA64>(image_base + import_table->FirstThunk);
+        //return 0x106;
+        while (lookup_table->u1.AddressOfData != NULL)
+        {
+            //return 0x106;
+            FARPROC func;
+            auto lookup_address = lookup_table->u1.AddressOfData;
+            
+            if ((lookup_address & IMAGE_ORDINAL_FLAG64) != NULL)
+            {
+                func = scd->__GetProcAddress(dll_import, reinterpret_cast<LPCSTR>(lookup_address & 0xFFFFFFFF));
+                if(func == NULL) return 0x2337;
+            }
+            else
+            {
+                auto import_name = reinterpret_cast<PIMAGE_IMPORT_BY_NAME>(image_base + lookup_address);
+                func = scd->__GetProcAddress(dll_import, import_name->Name);
+                if(func == NULL) return 0x3337;
+            }
+            
+            address_table->u1.Function = reinterpret_cast<uint64_t>(func);
+            ++lookup_table;
+            ++lookup_address;
+        }
+        ++import_table;
+    }
     
+    // resolve tls callbacks
+    if (nt_header->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_TLS].Size != NULL)
+    {
+        auto tls_dir_entry = nt_header->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_TLS];
+        auto* tls_table = reinterpret_cast<PIMAGE_TLS_DIRECTORY>(image_base + tls_dir_entry.VirtualAddress);
+        auto* tls_callback = reinterpret_cast<PIMAGE_TLS_CALLBACK*>(tls_table->AddressOfCallBacks);
+
+        while (tls_callback != NULL) 
+        {
+            (*tls_callback)(image_base, DLL_PROCESS_ATTACH, NULL);
+            tls_callback++;
+        }
+    } 
+    //return 0x106;
     // register exception tables
     auto& excep_dir_entry  = nt_header->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXCEPTION];
     if (excep_dir_entry.Size && excep_dir_entry.VirtualAddress) 
     {
         auto pFuncTable = reinterpret_cast<PRUNTIME_FUNCTION>(image_base + excep_dir_entry.VirtualAddress);
         ULONG entryCount = excep_dir_entry.Size / sizeof(RUNTIME_FUNCTION);
-
-        if (RtlAddFunctionTable(pFuncTable, entryCount, reinterpret_cast<DWORD64>(image_base)) == FALSE) return 6;
+        
+        if (scd->__RtlAddFunctionTable(pFuncTable, entryCount, reinterpret_cast<DWORD64>(image_base)) == FALSE) return 0x6337;
     }
-
-
-    return 0;
+    return 0x106;
+    // call DllMain
+    using f_DllMain = BOOL (__stdcall*) (HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved);
+    auto __DllMain = reinterpret_cast<f_DllMain>(image_base + nt_header->OptionalHeader.AddressOfEntryPoint);
+    __DllMain(reinterpret_cast<HINSTANCE>(image_base), DLL_PROCESS_ATTACH, NULL);
 }
 
 
@@ -125,7 +143,7 @@ PVOID mapp_dll(PROCESS_INFORMATION& pi)
     }
     
     auto dll_address = VirtualAllocEx(pi.hProcess,
-         NULL, nt_header->OptionalHeader.SizeOfImage, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+        NULL, nt_header->OptionalHeader.SizeOfImage, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
     if (!dll_address)
     {
         ERR("failed allocating memory for dll !");
@@ -150,20 +168,22 @@ PVOID mapp_dll(PROCESS_INFORMATION& pi)
         if (section_table[i].SizeOfRawData > 0)
         {
             auto status = WriteProcessMemory(pi.hProcess,
-                reinterpret_cast<uint8_t*>(dll_address) + section_table[i].VirtualAddress,
-                dll_base, section_table[i].SizeOfRawData , NULL);
+                reinterpret_cast<uint8_t*>(dll_address) + section_table[i].VirtualAddress, // in memory
+                dll_base + section_table[i].PointerToRawData, // in disk
+                section_table[i].SizeOfRawData , NULL);
             if (!status)
             {
-                ERR("failed copyig sections to the allocated dll");
+                ERR("failed copyig sections to the allocated memory");
                 getchar();
                 exit(1);
             }
         }
     }
     
-    INF("dll mapped successfully !");
+    INF("dll mapped at 0x%llX", (uintptr_t)dll_address);
     return dll_address;
 }
+
 
 
 
@@ -211,6 +231,14 @@ void inject_shellcode(PROCESS_INFORMATION& pi, PVOID dll_base)
     }
     sd.__LoadLibrary = reinterpret_cast<f_LoadLibrary>(reinterpret_cast<PVOID>(fn));
 
+    if (!(fn = GetProcAddress(hmod, "RtlAddFunctionTable")))
+    {
+        ERR("failed getting address of RtlAddFunctionTable");
+        getchar();
+        exit(1);
+    }
+    sd.__RtlAddFunctionTable = reinterpret_cast<f_RtlAddFunctionTable>(reinterpret_cast<PVOID>(fn));
+
     sd.dll_base = dll_base;
     auto sd_addr = VirtualAllocEx(pi.hProcess, NULL, sizeof(sd), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
     if (!sd_addr)
@@ -228,7 +256,7 @@ void inject_shellcode(PROCESS_INFORMATION& pi, PVOID dll_base)
         exit(1);
     }
 
-    auto h_thread = CreateRemoteThread(pi.hProcess, NULL, 0, (LPTHREAD_START_ROUTINE)sc_address, sd_addr, 0, NULL);
+    h_thread = CreateRemoteThread(pi.hProcess, NULL, 0, (LPTHREAD_START_ROUTINE)sc_address, sd_addr, 0, NULL);
     if (!h_thread)
     {
         ERR("failed creating remote thread");
@@ -236,40 +264,34 @@ void inject_shellcode(PROCESS_INFORMATION& pi, PVOID dll_base)
         exit(1);
     }
     
-    CloseHandle(h_thread);
-    INF("shellcode injected !");
-}
+    Sleep(1000);
+    std::thread wait_for([]{
 
-
-
-bool find_dll(const char* target, char* path)
-{
-    auto target_len = strlen(target);
-    auto dll_name = (path + (strlen(path))) - target_len;
-    if (stricmp(target, dll_name)) return false;
-    return true;
-}
-
-
-
-void process_debugevent(DEBUG_EVENT& de, PROCESS_INFORMATION& pi)
-{
-    switch (de.dwDebugEventCode)
-    {
-    case LOAD_DLL_DEBUG_EVENT:
-        
+        INF("waiting for thread ...");
+        auto waitResult = WaitForSingleObject(h_thread, INFINITE);
+        if (waitResult != WAIT_OBJECT_0)
         {
-            char Path[BUFSIZE];
-            GetFinalPathNameByHandleA(de.u.LoadDll.hFile, Path, BUFSIZE, 0);
-            if(!find_dll("sspicli.dll", Path)) break;
-            inject_shellcode(pi, mapp_dll(pi));
+            ERR("failed waiting for remote thread !");
+            CloseHandle(h_thread);
+            return;
         }
 
-        break;
-    
-    default:
-        break;
-    }
+        DWORD exitCode = 0;
+        if (!GetExitCodeThread(h_thread, &exitCode))
+        {
+            ERR("failed to get thread exitcode");
+            CloseHandle(h_thread);
+            return;
+        }
+        if (exitCode != 0)
+        {
+            INF("thread exited with %X", exitCode);
+            CloseHandle(h_thread);
+            return;
+        }
 
-    ContinueDebugEvent(de.dwProcessId, de.dwThreadId, DBG_CONTINUE);
+        INF("shellcode injected !");
+        CloseHandle(h_thread);
+    });
+    wait_for.detach();
 }

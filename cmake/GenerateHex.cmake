@@ -28,7 +28,7 @@ endforeach ()
 # Generate the contents that will be contained in the source file.
 set(output_c "
 #include \<cstdint\>
-#include \"includes.hpp\"
+#include \"dll.hpp\"
 
 uint8_t dll_data[] = {
     ${output_c}

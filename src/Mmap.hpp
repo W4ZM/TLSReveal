@@ -7,17 +7,19 @@
 
 using f_LoadLibrary = HMODULE (*) (LPCSTR);
 using f_GetProcAddress = FARPROC (*) (HMODULE, LPCSTR);
+using f_RtlAddFunctionTable = NTSYSAPI BOOLEAN (*) (PRUNTIME_FUNCTION, DWORD, DWORD64);
 
- struct sc_data
- {
-   f_LoadLibrary __LoadLibrary;
-   f_GetProcAddress __GetProcAddress;
-   PVOID dll_base;
- };
+
+struct sc_data
+{
+  f_LoadLibrary __LoadLibrary;
+  f_GetProcAddress __GetProcAddress;
+  f_RtlAddFunctionTable __RtlAddFunctionTable; 
+  PVOID dll_base;
+};
 
 DWORD WINAPI shellcode(_In_ LPVOID lpParameter);
 PVOID mapp_dll(PROCESS_INFORMATION& pi);
 void inject_shellcode(PROCESS_INFORMATION& pi, PVOID dll_base);
-bool find_dll(const char* target, char* path);
-void process_debugevent(DEBUG_EVENT& de, PROCESS_INFORMATION& pi);
+
 
