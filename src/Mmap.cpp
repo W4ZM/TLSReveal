@@ -1,11 +1,11 @@
 #include <Windows.h>
-#include <stdio.h>
 //#include <string>
 #include <thread>
 #include "Mmap.hpp"
+#include "utils.hpp"
 #include "dll.hpp"
 
-
+ 
 HANDLE h_thread; // remote thread handle
 
 
@@ -79,7 +79,7 @@ DWORD WINAPI shellcode(LPVOID lp)
             
             address_table->u1.Function = reinterpret_cast<uint64_t>(func);
             ++lookup_table;
-            ++lookup_address;
+            ++address_table;
         }
         ++import_table;
     }
@@ -107,7 +107,7 @@ DWORD WINAPI shellcode(LPVOID lp)
         
         if (scd->__RtlAddFunctionTable(pFuncTable, entryCount, reinterpret_cast<DWORD64>(image_base)) == FALSE) return 0x6337;
     }
-    return 0x106;
+    
     // call DllMain
     using f_DllMain = BOOL (__stdcall*) (HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved);
     auto __DllMain = reinterpret_cast<f_DllMain>(image_base + nt_header->OptionalHeader.AddressOfEntryPoint);
@@ -116,7 +116,7 @@ DWORD WINAPI shellcode(LPVOID lp)
 
 
 
-PVOID mapp_dll(PROCESS_INFORMATION& pi)
+PVOID mapp_dll(process_info& pi) // put back PROCESS_INFORMATION
 {
     auto dll_base = reinterpret_cast<uint8_t*>(dll_data);
     auto dos_header = reinterpret_cast<PIMAGE_DOS_HEADER>(dll_base);
@@ -186,8 +186,7 @@ PVOID mapp_dll(PROCESS_INFORMATION& pi)
 
 
 
-
-void inject_shellcode(PROCESS_INFORMATION& pi, PVOID dll_base) 
+void inject_shellcode(process_info& pi, PVOID dll_base) // put back PROCESS_INFORMATION 
 {
     auto sc_address = VirtualAllocEx(pi.hProcess, NULL, 0x1000, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
     if (!sc_address)
@@ -255,7 +254,7 @@ void inject_shellcode(PROCESS_INFORMATION& pi, PVOID dll_base)
         getchar();
         exit(1);
     }
-
+    
     h_thread = CreateRemoteThread(pi.hProcess, NULL, 0, (LPTHREAD_START_ROUTINE)sc_address, sd_addr, 0, NULL);
     if (!h_thread)
     {
@@ -266,32 +265,24 @@ void inject_shellcode(PROCESS_INFORMATION& pi, PVOID dll_base)
     
     Sleep(1000);
     std::thread wait_for([]{
-
-        INF("waiting for thread ...");
-        auto waitResult = WaitForSingleObject(h_thread, INFINITE);
-        if (waitResult != WAIT_OBJECT_0)
-        {
-            ERR("failed waiting for remote thread !");
-            CloseHandle(h_thread);
-            return;
-        }
-
         DWORD exitCode = 0;
-        if (!GetExitCodeThread(h_thread, &exitCode))
+        INF("waiting for thread ...");
+        while (true)
         {
-            ERR("failed to get thread exitcode");
-            CloseHandle(h_thread);
-            return;
-        }
-        if (exitCode != 0)
-        {
+            auto waitResult = WaitForSingleObject(h_thread, INFINITE);
+            if (waitResult != WAIT_OBJECT_0)
+            {
+                ERR("failed waiting for remote thread !");
+                CloseHandle(h_thread);
+                return;
+            }
+
+            GetExitCodeThread(h_thread, &exitCode);
             INF("thread exited with %X", exitCode);
-            CloseHandle(h_thread);
-            return;
+            break;
         }
 
-        INF("shellcode injected !");
         CloseHandle(h_thread);
     });
-    wait_for.detach();
+    wait_for.join(); // put back to detach
 }

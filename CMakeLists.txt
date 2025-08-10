@@ -12,6 +12,7 @@ execute_process(
   VERBATIM
 )
 
+
 # crt static linking
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
@@ -32,7 +33,13 @@ set(ALL_SOURCES
 )
 
 add_executable(mapper ${ALL_SOURCES})
+
 set_target_properties(mapper PROPERTIES VS_GLOBAL_CharacterSet "MultiByte")
+
+set_target_properties(mapper PROPERTIES
+    LINK_FLAGS "/MANIFESTUAC:\"level='requireAdministrator' uiAccess='false'\""
+)
+
 
 
 
