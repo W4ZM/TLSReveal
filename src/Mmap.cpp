@@ -19,10 +19,10 @@ DWORD WINAPI shellcode(LPVOID lp)
     auto import_table = reinterpret_cast<PIMAGE_IMPORT_DESCRIPTOR>(image_base + imp_dir_entry.VirtualAddress);
     
     // resolve relocations
-    if ((nt_header->OptionalHeader.DllCharacteristics & IMAGE_DLLCHARACTERISTICS_DYNAMIC_BASE) == NULL) return 0x4337;
+    if ((nt_header->OptionalHeader.DllCharacteristics & IMAGE_DLLCHARACTERISTICS_DYNAMIC_BASE) == NULL) return 0x1111;
     
     auto& reloc_dir_entry = nt_header->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC];
-    if(reloc_dir_entry.VirtualAddress == NULL) return 0x5337;
+    if(reloc_dir_entry.VirtualAddress == NULL) return 0x2222;
 
     auto relocation_table = reinterpret_cast<PIMAGE_BASE_RELOCATION>(image_base + reloc_dir_entry.VirtualAddress);
     uintptr_t delta = reinterpret_cast<uintptr_t>(image_base) - nt_header->OptionalHeader.ImageBase;
@@ -53,7 +53,7 @@ DWORD WINAPI shellcode(LPVOID lp)
         //return 0x106;
         auto dll_name = reinterpret_cast<char*>(image_base + import_table->Name);
         auto dll_import = scd->__LoadLibrary(dll_name);
-        if (dll_import == NULL) return 0x1337;
+        if (dll_import == NULL) return 0x3333;
         
         auto lookup_table = reinterpret_cast<PIMAGE_THUNK_DATA64>(image_base + import_table->OriginalFirstThunk);
         //return 0x106;
@@ -68,13 +68,13 @@ DWORD WINAPI shellcode(LPVOID lp)
             if ((lookup_address & IMAGE_ORDINAL_FLAG64) != NULL)
             {
                 func = scd->__GetProcAddress(dll_import, reinterpret_cast<LPCSTR>(lookup_address & 0xFFFFFFFF));
-                if(func == NULL) return 0x2337;
+                if(func == NULL) return 0x4444;
             }
             else
             {
                 auto import_name = reinterpret_cast<PIMAGE_IMPORT_BY_NAME>(image_base + lookup_address);
                 func = scd->__GetProcAddress(dll_import, import_name->Name);
-                if(func == NULL) return 0x3337;
+                if(func == NULL) return 0x5555;
             }
             
             address_table->u1.Function = reinterpret_cast<uint64_t>(func);
@@ -105,7 +105,7 @@ DWORD WINAPI shellcode(LPVOID lp)
         auto pFuncTable = reinterpret_cast<PRUNTIME_FUNCTION>(image_base + excep_dir_entry.VirtualAddress);
         ULONG entryCount = excep_dir_entry.Size / sizeof(RUNTIME_FUNCTION);
         
-        if (scd->__RtlAddFunctionTable(pFuncTable, entryCount, reinterpret_cast<DWORD64>(image_base)) == FALSE) return 0x6337;
+        if (scd->__RtlAddFunctionTable(pFuncTable, entryCount, reinterpret_cast<DWORD64>(image_base)) == FALSE) return 0x6666;
     }
     
     // call DllMain
@@ -186,7 +186,7 @@ PVOID mapp_dll(process_info& pi) // put back PROCESS_INFORMATION
 
 
 
-void inject_shellcode(process_info& pi, PVOID dll_base) // put back PROCESS_INFORMATION 
+void inject_shellcode(process_info& pi, PVOID dll_base, bool is_debugger) // put back PROCESS_INFORMATION 
 {
     auto sc_address = VirtualAllocEx(pi.hProcess, NULL, 0x1000, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
     if (!sc_address)
@@ -265,24 +265,55 @@ void inject_shellcode(process_info& pi, PVOID dll_base) // put back PROCESS_INFO
     
     Sleep(1000);
     std::thread wait_for([]{
+        
         DWORD exitCode = 0;
-        INF("waiting for thread ...");
-        while (true)
+        INF("waiting for remote thread ...");
+        
+        auto waitResult = WaitForSingleObject(h_thread, INFINITE);
+        if (waitResult != WAIT_OBJECT_0)
         {
-            auto waitResult = WaitForSingleObject(h_thread, INFINITE);
-            if (waitResult != WAIT_OBJECT_0)
-            {
-                ERR("failed waiting for remote thread !");
-                CloseHandle(h_thread);
-                return;
-            }
+            ERR("failed waiting for remote thread !");
+            CloseHandle(h_thread);
+            return;
+        }
 
-            GetExitCodeThread(h_thread, &exitCode);
+        GetExitCodeThread(h_thread, &exitCode);
+        switch (exitCode)
+        {
+        case 0x1111:
+            INF("dll cant be relocated !");
+            break;
+        
+        case 0x2222:
+            INF("dll can be relocated but contains no relocation directory !");
+            break;
+
+        case 0x3333:
+            INF("LoadLibrary failure");
+            break;
+
+        case 0x4444:
+            INF("GetProcAddress failure (by ordinal)");
+            break;
+
+        case 0x5555:
+            INF("GetProcAddress failure (by name)");
+            break;
+        
+        default:
             INF("thread exited with %X", exitCode);
             break;
         }
 
         CloseHandle(h_thread);
     });
-    wait_for.join(); // put back to detach
+
+    if (is_debugger)
+    {
+        wait_for.detach();
+    }
+    else
+    {
+        wait_for.join();
+    }
 }

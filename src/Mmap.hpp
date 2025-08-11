@@ -21,6 +21,6 @@ struct sc_data
 
 DWORD WINAPI shellcode(_In_ LPVOID lpParameter);
 PVOID mapp_dll(process_info& pi); // put back PROCESS_INFORMATION
-void inject_shellcode(process_info& pi, PVOID dll_base); // put back PROCESS_INFORMATION
+void inject_shellcode(process_info& pi, PVOID dll_base, bool is_debugger); // put back PROCESS_INFORMATION
 
 

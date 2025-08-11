@@ -14,5 +14,5 @@ struct process_info
 
 
 bool find_dll(const char* target, char* path);
-DWORD GetProcessIdByName(char* name);
+bool GetProcessIdByName(char* name, process_info& pi);
 void elevate_priv();

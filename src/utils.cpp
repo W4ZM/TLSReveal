@@ -2,7 +2,6 @@
 #include <TlHelp32.h>
 #include "utils.hpp"
  
-process_info pi;
 
 bool find_dll(const char* target, char* path)
 {
@@ -45,7 +44,7 @@ void elevate_priv()
 
 
 
-DWORD GetProcessIdByName(char* name) {
+bool GetProcessIdByName(char* name, process_info& pi) {
 	PROCESSENTRY32 entry;
 	entry.dwSize = sizeof(PROCESSENTRY32);
 
