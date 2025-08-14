@@ -7,6 +7,7 @@
 
 #define BUFSIZE MAX_PATH
 #define EXE_NAME "crackme.exe"
+PVOID bp_address{0};
 
 //void injector();
 bool start_debugger(DEBUG_EVENT& de, PROCESS_INFORMATION& pi);
@@ -59,8 +60,6 @@ bool start_debugger(DEBUG_EVENT& de, PROCESS_INFORMATION& pi)
 
 bool process_debug_event(DEBUG_EVENT& de, PROCESS_INFORMATION& pi)
 {
-    
-    PVOID bp_address;
 
     switch (de.dwDebugEventCode)
     {
@@ -85,14 +84,39 @@ bool process_debug_event(DEBUG_EVENT& de, PROCESS_INFORMATION& pi)
     case EXCEPTION_DEBUG_EVENT:
 
         {   
-            auto& er =  de.u.Exception.ExceptionRecord;
-            if((er.ExceptionCode != EXCEPTION_BREAKPOINT) || (er.ExceptionAddress != bp_address)) break;
-            INF("breakpoint hit !");
-
             CONTEXT ctx;
             ctx.ContextFlags = CONTEXT_ALL;
+            HANDLE h_thread;
 
-            auto h_thread = OpenThread(THREAD_ALL_ACCESS, FALSE, de.dwThreadId);
+            auto& er =  de.u.Exception.ExceptionRecord;
+
+            if ((er.ExceptionCode == EXCEPTION_SINGLE_STEP) && (er.ExceptionAddress == (PVOID)((uintptr_t)bp_address + 4))) // pop Rdi
+            {
+                if(!break_point(de, pi, bp_address, false)) return false; // set breakpoint again
+
+                h_thread = OpenThread(THREAD_ALL_ACCESS, FALSE, de.dwThreadId);
+                if (h_thread == NULL)
+                {
+                    ERR("failed to get thread handle");
+                    return false;
+                }
+
+                if (GetThreadContext(h_thread, &ctx) == NULL) 
+                {
+                    ERR("failed to get thread context");
+                    return false;
+                }
+
+                ctx.EFlags &= ~0x100; // clear trap flag
+                SetThreadContext(h_thread, &ctx);
+                CloseHandle(h_thread);
+                break;
+            }
+            
+            if((er.ExceptionCode != EXCEPTION_BREAKPOINT) || (er.ExceptionAddress != bp_address)) break;
+            //INF("breakpoint hit !");
+
+            h_thread = OpenThread(THREAD_ALL_ACCESS, FALSE, de.dwThreadId);
             if (h_thread == NULL)
             {
                 ERR("failed to get thread handle");
@@ -105,19 +129,21 @@ bool process_debug_event(DEBUG_EVENT& de, PROCESS_INFORMATION& pi)
                 return false;
             }
 
-            /* get pointer from rdi and read the buffer and print result */
             if(!print_buffer(pi, ctx)) return false;
-
-            CloseHandle(h_thread);
+            if(!break_point(de, pi, bp_address, true)) return false; // remove bp
             //inject_shellcode(pi, mapp_dll(pi), true);
-            if(!break_point(de, pi, bp_address, true)) return false;
+            // adjust RIP back and set trap flag for single-step
+            ctx.Rip--;
+            ctx.EFlags |= 0x100;  // Trap flag
+            SetThreadContext(h_thread, &ctx);
+            CloseHandle(h_thread);
         }
 
         break;
      
     case EXIT_PROCESS_DEBUG_EVENT:
 
-        INF("process terminated, press any key to exit");
+        INF("process terminated !\n");
         return false;
 
     default:

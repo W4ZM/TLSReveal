@@ -144,15 +144,15 @@ remove:
  
 bool print_buffer(PROCESS_INFORMATION& pi, CONTEXT& ctx)
 {
-    uint8_t buffer[sizeof(SecBufferDesc)];
+    std::vector<uint8_t> buffer(sizeof(SecBufferDesc));
 
-    if (!ReadProcessMemory(pi.hProcess, (LPCVOID)ctx.Rdi, buffer, sizeof(SecBufferDesc), NULL))
+    if (!ReadProcessMemory(pi.hProcess, (LPCVOID)ctx.Rdi, buffer.data(), sizeof(SecBufferDesc), NULL))
     {
         ERR("failed to read SecBufferDesc");
         return false;
     }
 
-    auto MessageBuffers = reinterpret_cast<PSecBufferDesc>(buffer);  
+    auto MessageBuffers = reinterpret_cast<PSecBufferDesc>(buffer.data());  
     std::vector<SecBuffer> pBuffers(MessageBuffers->cBuffers);
 
     if (!ReadProcessMemory(pi.hProcess, (LPCVOID)MessageBuffers->pBuffers, pBuffers.data(), sizeof(SecBuffer) * MessageBuffers->cBuffers, NULL))
@@ -161,9 +161,12 @@ bool print_buffer(PROCESS_INFORMATION& pi, CONTEXT& ctx)
         return false;
     }
 
+
     for (ULONG i = 0; i < MessageBuffers->cBuffers; i++)
     {   
-        std::vector<char> text(pBuffers[i].cbBuffer + 1); // +1 for null terminator
+        std::vector<char> text(pBuffers[i].cbBuffer);
+
+        if (pBuffers[i].BufferType != 0x1) continue; // != SECBUFFER_DATA
 
         if (!ReadProcessMemory(pi.hProcess, pBuffers[i].pvBuffer, text.data(), pBuffers[i].cbBuffer, NULL))
         {
@@ -171,9 +174,9 @@ bool print_buffer(PROCESS_INFORMATION& pi, CONTEXT& ctx)
             return false;
         }
 
-        text[pBuffers[i].cbBuffer] = '\0';
-        printf("%s", text);
+        for (ULONG j = 0; j < pBuffers[i].cbBuffer; j++) printf("%c",text[j]);
+        printf("\n\n");
     }
-    
+
     return true;
 }
