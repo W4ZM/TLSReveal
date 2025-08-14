@@ -10,9 +10,11 @@ struct process_info
 {
     HANDLE hProcess;
     DWORD dwProcessId;
+    PVOID rdx;
 };
 
 
 bool find_dll(const char* target, char* path);
 bool GetProcessIdByName(char* name, process_info& pi);
 void elevate_priv();
+void break_point(DEBUG_EVENT& de, process_info& pi, PVOID bp_address, bool remove_bp);

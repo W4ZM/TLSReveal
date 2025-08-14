@@ -1,5 +1,4 @@
 #include <Windows.h>
-//#include <string>
 #include <thread>
 #include "Mmap.hpp"
 #include "utils.hpp"
@@ -111,7 +110,15 @@ DWORD WINAPI shellcode(LPVOID lp)
     // call DllMain
     using f_DllMain = BOOL (__stdcall*) (HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved);
     auto __DllMain = reinterpret_cast<f_DllMain>(image_base + nt_header->OptionalHeader.AddressOfEntryPoint);
-    __DllMain(reinterpret_cast<HINSTANCE>(image_base), DLL_PROCESS_ATTACH, NULL);
+
+    if (scd->is_debugger)
+    {
+        __DllMain(reinterpret_cast<HINSTANCE>(image_base), DLL_PROCESS_ATTACH, scd->rdx);
+    }
+    else
+    {
+        __DllMain(reinterpret_cast<HINSTANCE>(image_base), DLL_PROCESS_ATTACH, NULL);
+    }
 }
 
 
@@ -239,6 +246,12 @@ void inject_shellcode(process_info& pi, PVOID dll_base, bool is_debugger) // put
     sd.__RtlAddFunctionTable = reinterpret_cast<f_RtlAddFunctionTable>(reinterpret_cast<PVOID>(fn));
 
     sd.dll_base = dll_base;
+    if(is_debugger)
+    {
+        sd.rdx = pi.rdx;
+        sd.is_debugger = true;
+    }
+
     auto sd_addr = VirtualAllocEx(pi.hProcess, NULL, sizeof(sd), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
     if (!sd_addr)
     {

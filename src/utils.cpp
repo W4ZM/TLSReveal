@@ -1,5 +1,6 @@
 #include <Windows.h>
 #include <TlHelp32.h>
+#include <cstdint>
 #include "utils.hpp"
  
 
@@ -78,4 +79,77 @@ bool GetProcessIdByName(char* name, process_info& pi) {
 
 	CloseHandle(snapshot);
 	return 0;
+}
+
+
+
+void break_point(DEBUG_EVENT& de, process_info& pi, PVOID bp_address, bool remove_bp)
+{
+    if(remove_bp) goto remove;
+    
+    static uint8_t bp = 0xCC;
+    static uint8_t original_byte;
+
+    DWORD oldProt;
+    DWORD tmp;
+    
+    if (!VirtualProtectEx(pi.hProcess, bp_address, 1, PAGE_EXECUTE_READWRITE, &oldProt)) 
+    {
+        ERR("VirtualProtectEx failed for PAGE_EXECUTE_READWRITE");
+        getchar();
+        exit(1);
+    }
+
+    if (!ReadProcessMemory(pi.hProcess, bp_address, &original_byte, 1, NULL))
+    {
+        ERR("failed reading original byte");
+        getchar();
+        exit(1);
+    }
+
+    if (!WriteProcessMemory(pi.hProcess, bp_address, &bp, 1, NULL))
+    {
+        ERR("failed setting breakpoint !");
+        getchar();
+        exit(1);
+    }
+
+    if (!VirtualProtectEx(pi.hProcess, bp_address, 1, oldProt, &tmp)) 
+    {
+        ERR("VirtualProtectEx failed restoring old protection");
+        getchar();
+        exit(1);
+    }
+
+    FlushInstructionCache(pi.hProcess, bp_address, 1);
+
+    return;
+
+remove:
+
+    DWORD old_Prot;
+    DWORD _tmp;
+    
+    if (!VirtualProtectEx(pi.hProcess, bp_address, 1, PAGE_EXECUTE_READWRITE, &old_Prot)) 
+    {
+        ERR("VirtualProtectEx failed for PAGE_EXECUTE_READWRITE (remove_bp)");
+        getchar();
+        exit(1);
+    }
+
+    if (!WriteProcessMemory(pi.hProcess, bp_address, &original_byte, 1, NULL))
+    {
+        ERR("failed removing breakpoint !");
+        getchar();
+        exit(1);
+    }
+
+    FlushInstructionCache(pi.hProcess, bp_address, 1);
+
+    if (!VirtualProtectEx(pi.hProcess, bp_address, 1, old_Prot, &_tmp)) 
+    {
+        ERR("VirtualProtectEx failed restoring old protection (remove_bp)");
+        getchar();
+        exit(1);
+    }
 }

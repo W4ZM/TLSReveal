@@ -15,6 +15,8 @@ struct sc_data
   f_GetProcAddress __GetProcAddress;
   f_RtlAddFunctionTable __RtlAddFunctionTable; 
   PVOID dll_base;
+  PVOID rdx;
+  bool is_debugger;
 };
 
 

