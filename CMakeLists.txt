@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 4.0)
-project(x64-dll-manual-mapper CXX)
+project(TLSMessageReveal CXX)
 
 # remove old dll hpp and cpp files
 file(REMOVE "${CMAKE_SOURCE_DIR}/src/dll.cpp" "${CMAKE_SOURCE_DIR}/src/dll.hpp")
@@ -32,10 +32,10 @@ set(ALL_SOURCES
     ${HDRS}
 )
 
-add_executable(mapper ${ALL_SOURCES})
+add_executable(Loader ${ALL_SOURCES})
 
-set_target_properties(mapper PROPERTIES VS_GLOBAL_CharacterSet "MultiByte")
+set_target_properties(Loader PROPERTIES VS_GLOBAL_CharacterSet "MultiByte")
 
-set_target_properties(mapper PROPERTIES
+set_target_properties(Loader PROPERTIES
     LINK_FLAGS "/MANIFESTUAC:\"level='requireAdministrator' uiAccess='false'\""
 )
