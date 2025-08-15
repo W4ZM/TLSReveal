@@ -1,3 +1,0 @@
-C:/Users/PC/Desktop/x64-dll-manual-mapper/build/CMakeFiles/mapper.dir
-C:/Users/PC/Desktop/x64-dll-manual-mapper/build/CMakeFiles/ALL_BUILD.dir
-C:/Users/PC/Desktop/x64-dll-manual-mapper/build/CMakeFiles/ZERO_CHECK.dir

@@ -7,7 +7,7 @@ file(REMOVE "${CMAKE_SOURCE_DIR}/src/dll.cpp" "${CMAKE_SOURCE_DIR}/src/dll.hpp")
 # build the dll
 message(STATUS "[ BUILDING DLL ]")
 execute_process(
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/target_dll
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/dll
   COMMAND cmd.exe /c build.cmd
   VERBATIM
 )
@@ -39,7 +39,3 @@ set_target_properties(mapper PROPERTIES VS_GLOBAL_CharacterSet "MultiByte")
 set_target_properties(mapper PROPERTIES
     LINK_FLAGS "/MANIFESTUAC:\"level='requireAdministrator' uiAccess='false'\""
 )
-
-
-
-
