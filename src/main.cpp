@@ -4,7 +4,7 @@
 //#include "Mmap.hpp"
 #include "dbg.hpp"
 
-#define EXE_NAME "crackme.exe"
+#define EXE_NAME "target.exe"
 
 bool start_debugger(DEBUG_EVENT& de, PROCESS_INFORMATION& pi);
 

@@ -21,7 +21,7 @@ Follow these instructions to build and run the project .
 
 1.  **Clone the repository**
     ```bash
-    git clone [https://github.com/W4ZM/TLSMessageReveal.git](https://github.com/W4ZM/TLSMessageReveal.git)
+    git clone https://github.com/W4ZM/TLSMessageReveal.git
     cd TLSMessageReveal\
     ```
 
@@ -36,7 +36,7 @@ Follow these instructions to build and run the project .
 
 ### Usage
 
-Change the `#define EXE_NAME "crackme.exe"` to the name of target executable.
+Change the `#define EXE_NAME "target.exe"` to the name of target executable.
 Launch The `Loader.exe` in the same folder with the target exe.
 
 ## License
