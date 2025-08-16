@@ -26,8 +26,7 @@ Follow these instructions to build and run the project .
     ```bash
     cd TLSReveal\
     
-    mkdir build\
-    cd build\
+    mkdir build\ && cd build\
 
     cmake ..
     cmake --build . --config Release
