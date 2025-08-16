@@ -20,13 +20,12 @@ Follow these instructions to build and run the project .
 ### Building from Source
 
 1.  **Clone the repository**
-    ```bash
-    git clone https://github.com/W4ZM/TLSReveal.git
-    cd TLSReveal\
-    ```
+    `git clone https://github.com/W4ZM/TLSReveal.git`
 
 2.  **Build**
     ```bash
+    cd TLSReveal\
+    
     mkdir build\
     cd build\
 
