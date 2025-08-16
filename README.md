@@ -37,7 +37,3 @@ Follow these instructions to build and run the project .
 
 Change the `#define EXE_NAME "target.exe"` to the name of target executable.
 Launch The `Loader.exe` in the same folder with the target exe.
-
-## License
-
-This project is distributed under the MIT License. See the `LICENSE` file for more information.
