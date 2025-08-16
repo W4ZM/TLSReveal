@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 4.0)
-project(TLSMessageReveal CXX)
+project(TLSReveal CXX)
 
 # remove old dll hpp and cpp files
 file(REMOVE "${CMAKE_SOURCE_DIR}/src/dll.cpp" "${CMAKE_SOURCE_DIR}/src/dll.hpp")
