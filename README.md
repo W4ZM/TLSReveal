@@ -21,8 +21,8 @@ Follow these instructions to build and run the project .
 
 1.  **Clone the repository**
     ```bash
-    git clone https://github.com/W4ZM/TLSMessageReveal.git
-    cd TLSMessageReveal\
+    git clone https://github.com/W4ZM/TLSReveal.git
+    cd TLSReveal\
     ```
 
 2.  **Build**
