@@ -87,7 +87,7 @@ DWORD WINAPI shellcode(LPVOID lp)
         auto* tls_table = reinterpret_cast<PIMAGE_TLS_DIRECTORY>(image_base + tls_dir_entry.VirtualAddress);
         auto* tls_callback = reinterpret_cast<PIMAGE_TLS_CALLBACK*>(tls_table->AddressOfCallBacks);
 
-        while (tls_callback != NULL) 
+        while (*tls_callback != NULL) 
         {
             (*tls_callback)(image_base, DLL_PROCESS_ATTACH, NULL);
             tls_callback++;
