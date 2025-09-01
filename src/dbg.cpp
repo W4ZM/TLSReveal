@@ -106,10 +106,10 @@ bool print_buffer(PROCESS_INFORMATION& pi, CONTEXT& ctx)
         return false;
     }
 
-
+    std::vector<char> text;
     for (ULONG i = 0; i < MessageBuffers->cBuffers; i++)
     {   
-        std::vector<char> text(pBuffers[i].cbBuffer);
+        text.resize(pBuffers[i].cbBuffer);
 
         if (pBuffers[i].BufferType != 0x1) continue; // != SECBUFFER_DATA
 
