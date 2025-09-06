@@ -1,6 +1,6 @@
 # TLSReveal
 
-Automatically Launch and debug an executable, specifically targeting the `UnsealMessage` function in `sspicli.dll` to monitor TLS protocol buffer data recieved from a server, and includes a manual DLL mapper to inject custom Dll into the target process.
+Automatically Launch and debug an executable, specifically targeting the `UnsealMessage` function in `sspicli.dll` to monitor TLS protocol buffer data recieved from a server, and includes a manual DLL mapper to inject custom Dll into the target process.  
 
 ---
 
@@ -12,11 +12,7 @@ Automatically Launch and debug an executable, specifically targeting the `Unseal
 * **Cmake Script**: Includes a `.cmake` script to automatically build and generate hex bytes from the dll and include them via header file in the project before it builds. 
 
 
-## Getting Started
-
-Follow these instructions to build and run the project .
-
-### Building from Source
+## Building from Source
 
 1.  **Clone the repository**
     `git clone https://github.com/W4ZM/TLSReveal.git`
@@ -31,10 +27,8 @@ Follow these instructions to build and run the project .
     cmake --build . --config Release
     ```
 
-### Usage
+## Usage
 
 Change the `#define EXE_NAME "target.exe"` in `src\main.cpp` to the name of target executable.
 Launch The `Loader.exe` in the same folder with the target exe.  
 [video](https://youtu.be/hYsclEIyoYg)  
-
----
