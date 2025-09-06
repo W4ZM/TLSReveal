@@ -11,7 +11,6 @@ Automatically Launch and debug an executable, specifically targeting the `Unseal
 * **Manual DLL Mapping**: by manually mapping a 64-bit DLL into the target process's address space, bypassing standard `LoadLibrary` calls.
 * **Cmake Script**: Includes a `.cmake` script to automatically build and generate hex bytes from the dll and include them via header file in the project before it builds. 
 
----
 
 ## Getting Started
 
@@ -36,4 +35,6 @@ Follow these instructions to build and run the project .
 
 Change the `#define EXE_NAME "target.exe"` in `src\main.cpp` to the name of target executable.
 Launch The `Loader.exe` in the same folder with the target exe.  
-[video](https://youtu.be/hYsclEIyoYg)
+[video](https://youtu.be/hYsclEIyoYg)  
+
+---
